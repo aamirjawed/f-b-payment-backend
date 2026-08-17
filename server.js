@@ -17,16 +17,41 @@ const seedDatabase = require('./seeders/seedData');
 const app = express();
 const server = http.createServer(app);
 
-// Socket.IO Setup
+const allowedOrigins = [
+  'https://f-b-menu-frontend.vercel.app',
+  'https://f-b-admin-frontend.vercel.app',
+  process.env.CLIENT_URL,
+  'http://localhost:3000',
+  'http://localhost:5173',
+].filter(Boolean);
+
+const corsOptions = {
+  origin: (origin, callback) => {
+    // Allow requests with no origin (like server-to-server, mobile apps, or Postman)
+    if (!origin || allowedOrigins.includes(origin) || allowedOrigins.includes(`${origin}/`) || process.env.NODE_ENV !== 'production') {
+      return callback(null, true);
+    }
+    // Allow all vercel.app domains for flexible frontend deployments
+    if (origin.endsWith('.vercel.app')) {
+      return callback(null, true);
+    }
+    callback(null, true);
+  },
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept'],
+};
+
+// Socket.IO Setup with CORS
 const io = new Server(server, {
   cors: {
-    origin: process.env.CLIENT_URL || '*',
+    origin: '*',
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH'],
   },
 });
 
 // Middleware
-app.use(cors());
+app.use(cors(corsOptions));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
