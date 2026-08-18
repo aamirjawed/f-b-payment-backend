@@ -79,10 +79,17 @@ const createQRCodeService = async ({ amount, vendorId, orderId, notes = {} }) =>
     qrImageUrl = qrCode.image_url;
     razorpayQrId = qrCode.id;
   } catch (error) {
-    console.warn('[Razorpay QR Notice]: Using Dynamic UPI Intent payload:', error.message);
-    const upiId = process.env.STALL_UPI_ID || 'foodstall@upi';
-    upiString = `upi://pay?pa=${encodeURIComponent(upiId)}&pn=FoodStall&am=${amount}&cu=INR&tr=${targetOrderId}`;
-    qrImageUrl = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(upiString)}`;
+    console.error('[Razorpay QR Error]:', error.message);
+
+    // If custom business UPI ID is configured in environment, construct valid merchant UPI Intent string
+    if (process.env.STALL_UPI_ID && process.env.STALL_UPI_ID.trim()) {
+      const upiId = process.env.STALL_UPI_ID.trim();
+      upiString = `upi://pay?pa=${encodeURIComponent(upiId)}&pn=FoodStall&am=${amount}&cu=INR&tr=${targetOrderId}`;
+      qrImageUrl = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(upiString)}`;
+    } else {
+      // Return clear error if Razorpay API fails and no custom STALL_UPI_ID is provided
+      throw new Error(`Razorpay QR Code API Error: ${error.message}. (Ensure UPI / QR Code payment method is enabled in your Razorpay Dashboard)`);
+    }
   }
 
   let pendingPayment = null;
