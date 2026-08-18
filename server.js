@@ -171,6 +171,8 @@ async function startServer() {
 
       await dropVendorIdFks('categories');
       await dropVendorIdFks('menuitems');
+      await dropVendorIdFks('payments');
+      await dropVendorIdFks('orders');
     } catch (migErr) {
       console.log('[Migration Notice]:', migErr.message);
     }

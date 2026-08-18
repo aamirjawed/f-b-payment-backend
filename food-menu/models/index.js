@@ -9,13 +9,13 @@ const Bartender = require('../../bartender/models/Bartender');
 // Associations (use constraints: false to allow global categories & menu items)
 Vendor.hasMany(MenuItem, { foreignKey: 'vendorId', sourceKey: 'id', as: 'menuItems', constraints: false });
 Vendor.hasMany(Category, { foreignKey: 'vendorId', sourceKey: 'id', as: 'categories', constraints: false });
-Vendor.hasMany(Payment, { foreignKey: 'vendorId', sourceKey: 'id', as: 'payments' });
-Vendor.hasMany(Bartender, { foreignKey: 'vendorId', sourceKey: 'id', as: 'bartenders' });
+Vendor.hasMany(Payment, { foreignKey: 'vendorId', sourceKey: 'id', as: 'payments', constraints: false });
+Vendor.hasMany(Bartender, { foreignKey: 'vendorId', sourceKey: 'id', as: 'bartenders', constraints: false });
 
 MenuItem.belongsTo(Vendor, { foreignKey: 'vendorId', targetKey: 'id', as: 'vendor', constraints: false });
 Category.belongsTo(Vendor, { foreignKey: 'vendorId', targetKey: 'id', as: 'vendor', constraints: false });
-Payment.belongsTo(Vendor, { foreignKey: 'vendorId', targetKey: 'id', as: 'vendor' });
-Bartender.belongsTo(Vendor, { foreignKey: 'vendorId', targetKey: 'id', as: 'vendor' });
+Payment.belongsTo(Vendor, { foreignKey: 'vendorId', targetKey: 'id', as: 'vendor', constraints: false });
+Bartender.belongsTo(Vendor, { foreignKey: 'vendorId', targetKey: 'id', as: 'vendor', constraints: false });
 
 Category.hasMany(MenuItem, { foreignKey: 'category', sourceKey: 'id', as: 'items' });
 MenuItem.belongsTo(Category, { foreignKey: 'category', targetKey: 'id', as: 'categoryDetails' });
