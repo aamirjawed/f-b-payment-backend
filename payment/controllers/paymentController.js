@@ -166,6 +166,23 @@ const getPaymentById = async (req, res, next) => {
     });
 
     if (!payment) {
+      // Check if order exists directly to return clean pending status instead of 404
+      const { Order } = require('../../order/models');
+      const order = await Order.findByPk(paymentId);
+      if (order) {
+        return res.status(200).json({
+          success: true,
+          payment: {
+            id: `pay_${order.id}`,
+            orderId: order.id,
+            vendorId: order.vendorId,
+            amount: order.totalAmount,
+            status: order.paymentStatus || 'pending',
+            paymentMethod: order.paymentMethod || 'upi',
+          },
+        });
+      }
+
       return res.status(404).json({
         success: false,
         message: `Payment details for '${paymentId}' not found`,
