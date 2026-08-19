@@ -49,84 +49,6 @@ const createOrderService = async ({ amount, currency = 'INR', vendorId, orderId,
 };
 
 /**
- * Service: Create Dynamic Razorpay UPI QR Code / UPI Intent Link & Store Pending Payment Record
- */
-const createQRCodeService = async ({ amount, vendorId, orderId, notes = {} }) => {
-  const razorpay = getRazorpayInstance();
-  const amountInPaise = Math.round(amount * 100);
-  const targetOrderId = orderId || `ord_${Date.now()}`;
-  const paymentId = `pay_qr_${Date.now()}_${Math.floor(Math.random() * 1000)}`;
-
-  let qrImageUrl = '';
-  let upiString = '';
-  let razorpayQrId = `qr_${targetOrderId}_${Date.now()}`;
-
-  try {
-    const qrCode = await razorpay.qrCode.create({
-      type: 'upi_qr',
-      name: `Food Stall Payment`,
-      usage: 'single_use',
-      fixed_amount: true,
-      payment_amount: amountInPaise,
-      description: `Payment for Order #${targetOrderId}`,
-      notes: {
-        vendorId: vendorId || '',
-        orderId: targetOrderId,
-        ...notes,
-      },
-    });
-
-    qrImageUrl = qrCode.image_url;
-    razorpayQrId = qrCode.id;
-  } catch (error) {
-    console.error('[Razorpay QR Error]:', error.message);
-
-    // If custom business UPI ID is configured in environment, construct valid merchant UPI Intent string
-    if (process.env.STALL_UPI_ID && process.env.STALL_UPI_ID.trim()) {
-      const upiId = process.env.STALL_UPI_ID.trim();
-      upiString = `upi://pay?pa=${encodeURIComponent(upiId)}&pn=FoodStall&am=${amount}&cu=INR&tr=${targetOrderId}`;
-      qrImageUrl = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(upiString)}`;
-    } else {
-      // Return clear error if Razorpay API fails and no custom STALL_UPI_ID is provided
-      throw new Error(`Razorpay QR Code API Error: ${error.message}. (Ensure UPI / QR Code payment method is enabled in your Razorpay Dashboard)`);
-    }
-  }
-
-  let pendingPayment = null;
-  try {
-    // 💾 Store Payment record in MySQL with status 'created'
-    pendingPayment = await Payment.create({
-      id: paymentId,
-      orderId: targetOrderId,
-      vendorId: vendorId || '',
-      razorpayOrderId: razorpayQrId,
-      amount,
-      currency: 'INR',
-      status: 'created',
-      paymentMethod: 'upi_qr',
-      receipt: `rcpt_${targetOrderId}`,
-      notes: {
-        vendorId: vendorId || '',
-        orderId: targetOrderId,
-        ...notes,
-      },
-    });
-  } catch (dbError) {
-    console.warn('[Payment DB Notice]: Could not create pending payment record:', dbError.message);
-  }
-
-  return {
-    success: true,
-    payment: pendingPayment,
-    qrCodeId: razorpayQrId,
-    imageUrl: qrImageUrl,
-    upiString,
-    amount,
-    orderId: targetOrderId,
-  };
-};
-
-/**
  * Service: Verify Razorpay Payment Signature (Frontend Checkout Callback)
  */
 const verifySignatureService = async ({ razorpayOrderId, razorpayPaymentId, razorpaySignature }) => {
@@ -206,11 +128,11 @@ const handleWebhookService = async (reqBody, webhookSignature) => {
 
   console.log(`[Razorpay Webhook Received]: Event type -> ${event}`);
 
-  if (event === 'payment.captured' || event === 'order.paid' || event === 'qr_code.credited') {
+  if (event === 'payment.captured' || event === 'order.paid') {
     const paymentEntity = payload.payment ? payload.payment.entity : null;
     const razorpayOrderId = paymentEntity ? paymentEntity.order_id : null;
     const razorpayPaymentId = paymentEntity ? paymentEntity.id : null;
-    const notes = paymentEntity?.notes || payload.qr_code?.entity?.notes;
+    const notes = paymentEntity?.notes;
     const targetOrderId = notes?.orderId;
 
     const { Op } = require('sequelize');
@@ -226,7 +148,7 @@ const handleWebhookService = async (reqBody, webhookSignature) => {
     if (payment) {
       payment.status = 'captured';
       payment.razorpayPaymentId = razorpayPaymentId || payment.razorpayPaymentId;
-      payment.paymentMethod = paymentEntity ? paymentEntity.method : 'upi_qr';
+      payment.paymentMethod = paymentEntity ? paymentEntity.method : 'online';
       await payment.save();
 
       // Synchronize associated Order paymentStatus to 'paid'
@@ -270,7 +192,6 @@ const handleWebhookService = async (reqBody, webhookSignature) => {
 
 module.exports = {
   createOrderService,
-  createQRCodeService,
   verifySignatureService,
   handleWebhookService,
 };

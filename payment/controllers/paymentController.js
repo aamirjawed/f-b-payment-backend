@@ -1,6 +1,5 @@
 const {
   createOrderService,
-  createQRCodeService,
   verifySignatureService,
   handleWebhookService,
 } = require('../services/razorpayService');
@@ -38,38 +37,6 @@ const createPaymentOrder = async (req, res, next) => {
       keyId: result.keyId,
       razorpayOrder: result.razorpayOrder,
       payment: result.payment,
-    });
-  } catch (error) {
-    next(error);
-  }
-};
-
-/**
- * POST /api/payment/create-qr
- * Create dynamic Razorpay UPI QR code or dynamic UPI intent payload
- */
-const createPaymentQRCode = async (req, res, next) => {
-  try {
-    const { amount, vendorId, orderId, notes } = req.body;
-
-    if (!amount || isNaN(amount) || amount <= 0) {
-      return res.status(400).json({
-        success: false,
-        message: 'Valid amount is required to generate UPI QR code',
-      });
-    }
-
-    const result = await createQRCodeService({
-      amount: parseFloat(amount),
-      vendorId,
-      orderId,
-      notes,
-    });
-
-    res.status(200).json({
-      success: true,
-      message: 'UPI QR code generated successfully',
-      qrData: result,
     });
   } catch (error) {
     next(error);
@@ -304,7 +271,6 @@ const getAllPayments = async (req, res, next) => {
 
 module.exports = {
   createPaymentOrder,
-  createPaymentQRCode,
   verifyPayment,
   processWebhook,
   getPaymentById,

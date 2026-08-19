@@ -2,7 +2,6 @@ const express = require('express');
 const router = express.Router();
 const {
   createPaymentOrder,
-  createPaymentQRCode,
   verifyPayment,
   processWebhook,
   getPaymentById,
@@ -12,7 +11,6 @@ const { verifyAdminAccess } = require('../../admin/middlewares/adminAuth');
 
 // Customer Checkout Routes
 router.post('/create-order', createPaymentOrder);
-router.post('/create-qr', createPaymentQRCode);
 router.post('/verify-signature', verifyPayment);
 
 // Automated Razorpay Webhook Endpoint
