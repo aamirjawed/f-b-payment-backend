@@ -48,7 +48,7 @@ const adminLogin = async (req, res, next) => {
         email: admin.email,
       },
       secret,
-      { expiresIn: '24h' }
+      { expiresIn: '30d' } // Extended 30 days session for tablets & mobile devices
     );
 
     res.status(200).json({
@@ -102,24 +102,29 @@ const getAdminProfile = async (req, res, next) => {
 };
 
 /**
- * POST /api/admin/reset-database - Wipe all mock / transaction data from MySQL
+ * POST /api/admin/reset-database - Wipe all mock / transaction / stall data from MySQL
  */
 const resetDatabase = async (req, res, next) => {
   try {
     const { Category, MenuItem, Vendor } = require('../../food-menu/models');
     const { Order, OrderItem } = require('../../order/models');
     const Payment = require('../../payment/models/Payment');
+    const Bartender = require('../../bartender/models/Bartender');
+    const { Op } = require('sequelize');
 
     await Payment.destroy({ where: {} }).catch(() => {});
     await OrderItem.destroy({ where: {} }).catch(() => {});
     await Order.destroy({ where: {} }).catch(() => {});
     await MenuItem.destroy({ where: {} }).catch(() => {});
     await Category.destroy({ where: {} }).catch(() => {});
+    await Bartender.destroy({ where: {} }).catch(() => {});
     await Vendor.destroy({ where: {} }).catch(() => {});
+    // Remove all stall admin accounts except super admin 'admin'
+    await Admin.destroy({ where: { username: { [Op.ne]: 'admin' } } }).catch(() => {});
 
     res.status(200).json({
       success: true,
-      message: 'All stalls, menu items, categories, orders, and payments have been completely wiped from the database.',
+      message: 'All stalls, bartenders, menu items, categories, orders, and payments have been completely wiped from the database. Clean slate ready.',
     });
   } catch (error) {
     next(error);

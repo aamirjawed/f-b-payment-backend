@@ -244,10 +244,18 @@ const loginVendor = async (req, res, next) => {
       });
     }
 
+    const cleanUser = username.trim();
+    const cleanPass = password.trim();
+
     const { Op } = require('sequelize');
     const adminAccount = await Admin.findOne({
       where: {
-        [Op.or]: [{ username }, { email: username }],
+        [Op.or]: [
+          { username: cleanUser },
+          { email: cleanUser },
+          { username: `bar_${cleanUser}` },
+          { username: cleanUser.replace(/^bar_/, '') },
+        ],
       },
     });
 
@@ -258,7 +266,7 @@ const loginVendor = async (req, res, next) => {
       });
     }
 
-    const isMatch = await adminAccount.comparePassword(password);
+    const isMatch = await adminAccount.comparePassword(cleanPass);
     if (!isMatch) {
       return res.status(401).json({
         success: false,

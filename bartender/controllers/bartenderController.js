@@ -487,23 +487,40 @@ const loginWithPassword = async (req, res, next) => {
       });
     }
 
+    const cleanUser = username.trim();
+    const cleanPass = password.trim();
+    const { Op } = require('sequelize');
+
     let bartender = await Bartender.findOne({
-      where: { username: username.trim(), isActive: true },
+      where: {
+        [Op.or]: [
+          { username: cleanUser },
+          { id: cleanUser },
+          { vendorId: cleanUser },
+          { username: `bar_${cleanUser}` },
+          { username: cleanUser.replace(/^bar_/, '') },
+        ],
+        isActive: true,
+      },
       include: [{ model: Vendor, as: 'vendor', attributes: ['id', 'name', 'stallNumber', 'location'] }],
     });
 
     if (!bartender) {
       // Fallback: Check Admin table for Bar/Vendor accounts (e.g. bar_vendor-main-stall)
       const Admin = require('../../admin/models/Admin');
-      const { Op } = require('sequelize');
       const adminAccount = await Admin.findOne({
         where: {
-          [Op.or]: [{ username: username.trim() }, { email: username.trim() }],
+          [Op.or]: [
+            { username: cleanUser },
+            { email: cleanUser },
+            { username: `bar_${cleanUser}` },
+            { username: cleanUser.replace(/^bar_/, '') },
+          ],
         },
       });
 
       if (adminAccount) {
-        const isMatch = await adminAccount.comparePassword(password);
+        const isMatch = await adminAccount.comparePassword(cleanPass);
         if (isMatch) {
           // Resolve vendor record
           let vendor = await Vendor.findOne({
@@ -551,7 +568,7 @@ const loginWithPassword = async (req, res, next) => {
       });
     }
 
-    const isMatch = await bartender.comparePassword(password);
+    const isMatch = await bartender.comparePassword(cleanPass);
     if (!isMatch) {
       return res.status(401).json({
         success: false,
