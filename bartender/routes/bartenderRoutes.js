@@ -6,6 +6,7 @@ const {
   loginWithPassword,
   getBartenderProfile,
   getBartenderOrders,
+  getBartenderOrderById,
   updateBartenderOrderStatus,
 } = require('../controllers/bartenderController');
 const { verifyBartenderAccess } = require('../middlewares/bartenderAuth');
@@ -21,6 +22,7 @@ router.use(verifyBartenderAccess);
 
 router.get('/me', getBartenderProfile);
 router.get('/orders', getBartenderOrders);
+router.get('/orders/:id', getBartenderOrderById);
 router.patch('/orders/:id/status', updateBartenderOrderStatus);
 
 module.exports = router;

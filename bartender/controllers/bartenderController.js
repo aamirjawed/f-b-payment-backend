@@ -709,14 +709,52 @@ const getBartenderOrders = async (req, res, next) => {
 };
 
 /**
- * PATCH /api/bartenders/orders/:id/status - Update order status & log bartender fulfillment
+ * GET /api/bartenders/orders/:id - Fetch single order details by Order ID or Token Number
+ */
+const getBartenderOrderById = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const { Op } = require('sequelize');
+
+    const order = await Order.findOne({
+      where: {
+        [Op.or]: [
+          { id },
+          { tokenNumber: id },
+          { tokenNumber: `Token #${id.replace(/^#/, '')}` },
+        ],
+      },
+      include: [
+        { model: OrderItem, as: 'items' },
+        { model: Payment, as: 'paymentDetails' },
+        { model: Vendor, as: 'vendor', attributes: ['id', 'name', 'stallNumber', 'location'] },
+      ],
+    });
+
+    if (!order) {
+      return res.status(404).json({
+        success: false,
+        message: `Order '${id}' not found`,
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      data: order,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * PATCH /api/bartenders/orders/:id/status - Update order status & log bartender fulfillment (Universal access)
  */
 const updateBartenderOrderStatus = async (req, res, next) => {
   try {
     const { id } = req.params;
     const { orderStatus } = req.body;
     const bartenderId = req.bartender?.id;
-    const vendorId = req.bartender?.vendorId;
 
     if (!orderStatus) {
       return res.status(400).json({
@@ -725,13 +763,15 @@ const updateBartenderOrderStatus = async (req, res, next) => {
       });
     }
 
-    const whereClause = { id };
-    if (vendorId) {
-      whereClause.vendorId = vendorId;
-    }
-
+    const { Op } = require('sequelize');
     const order = await Order.findOne({
-      where: whereClause,
+      where: {
+        [Op.or]: [
+          { id },
+          { tokenNumber: id },
+          { tokenNumber: `Token #${id.replace(/^#/, '')}` },
+        ],
+      },
       include: [
         { model: OrderItem, as: 'items' },
         { model: Vendor, as: 'vendor', attributes: ['id', 'name', 'stallNumber'] },
@@ -741,7 +781,7 @@ const updateBartenderOrderStatus = async (req, res, next) => {
     if (!order) {
       return res.status(404).json({
         success: false,
-        message: `Order #${id} not found or does not belong to your stall`,
+        message: `Order #${id} not found`,
       });
     }
 
@@ -770,7 +810,7 @@ const updateBartenderOrderStatus = async (req, res, next) => {
 
     res.status(200).json({
       success: true,
-      message: `Order #${order.id} status updated to '${order.orderStatus}' by ${req.bartender?.name || 'Bartender'}`,
+      message: `Order #${order.id} (${order.tokenNumber}) marked as ${orderStatus}`,
       data: order,
     });
   } catch (error) {
@@ -790,5 +830,6 @@ module.exports = {
   loginWithPassword,
   getBartenderProfile,
   getBartenderOrders,
+  getBartenderOrderById,
   updateBartenderOrderStatus,
 };
